@@ -1,4 +1,5 @@
 // Mecânica orbital pura (sem DOM) — testável em Node.
+// Referencial: eclíptica J2000, eixo z = norte eclíptico, origem no corpo central.
 const DEG = Math.PI / 180;
 const TWO_PI = 2 * Math.PI;
 
@@ -21,29 +22,42 @@ export function solveKepler(M, e, tol = 1e-12) {
   return E;
 }
 
-/** Posição heliocêntrica no plano da eclíptica (UA) após `days` dias desde J2000. */
-export function position(planet, days) {
-  const n = 360 / planet.period; // graus/dia
-  const M = (planet.L0 - planet.varpi + n * days) * DEG;
-  const E = solveKepler(M, planet.e);
-  return fromAnomaly(planet, E);
+/** Posição (UA, eclíptica) após `days` dias desde J2000, em relação ao corpo central. */
+export function position(body, days) {
+  const L = body.L0 + (360 / body.period) * days;
+  const varpi = body.varpi + (body.dVarpi || 0) * days;
+  const M = (L - varpi) * DEG;
+  return fromAnomaly(body, solveKepler(M, body.e), days);
 }
 
-/** Ponto da órbita dado a anomalia excêntrica E (usado também para desenhar a elipse). */
-export function fromAnomaly(planet, E) {
-  const x = planet.a * (Math.cos(E) - planet.e);
-  const y = planet.a * Math.sqrt(1 - planet.e * planet.e) * Math.sin(E);
-  const w = planet.varpi * DEG;
+/** Ponto da órbita dada a anomalia excêntrica E (também usado para desenhar a elipse). */
+export function fromAnomaly(body, E, days = 0) {
+  const Om = (body.Omega || 0) + (body.dOmega || 0) * days;
+  const varpi = body.varpi + (body.dVarpi || 0) * days;
+  const w = (varpi - Om) * DEG; // argumento do periélio
+  const O = Om * DEG;
+  const I = (body.I || 0) * DEG;
+
+  const xp = body.a * (Math.cos(E) - body.e);
+  const yp = body.a * Math.sqrt(1 - body.e * body.e) * Math.sin(E);
+
+  const cw = Math.cos(w), sw = Math.sin(w);
+  const cO = Math.cos(O), sO = Math.sin(O);
+  const cI = Math.cos(I), sI = Math.sin(I);
   return {
-    x: x * Math.cos(w) - y * Math.sin(w),
-    y: x * Math.sin(w) + y * Math.cos(w),
-    r: Math.hypot(x, y),
+    x: (cw * cO - sw * sO * cI) * xp + (-sw * cO - cw * sO * cI) * yp,
+    y: (cw * sO + sw * cO * cI) * xp + (-sw * sO + cw * cO * cI) * yp,
+    z: sw * sI * xp + cw * sI * yp,
+    r: Math.hypot(xp, yp),
   };
 }
 
-/** Amostra a elipse completa como polilinha. */
-export function orbitPath(planet, samples = 180) {
+/** Amostra a elipse completa (na orientação do instante `days`) como polilinha. */
+export function orbitPath(body, samples = 360, days = 0) {
   const pts = [];
-  for (let i = 0; i <= samples; i++) pts.push(fromAnomaly(planet, (i / samples) * TWO_PI));
+  for (let i = 0; i < samples; i++) pts.push(fromAnomaly(body, (i / samples) * TWO_PI, days));
   return pts;
 }
+
+/** Eclíptica (z = norte) → eixos do Three.js (y = cima). */
+export const eclipticToScene = ({ x, y, z }) => ({ x, y: z, z: -y });

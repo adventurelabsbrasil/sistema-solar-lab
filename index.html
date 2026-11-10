@@ -4,37 +4,68 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sistema Solar Lab</title>
+  <script type="importmap">
+    { "imports": {
+        "three": "./node_modules/three/build/three.module.js",
+        "three/addons/": "./node_modules/three/examples/jsm/"
+    } }
+  </script>
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
-    body { margin: 0; background: #05070f; color: #dfe6f5; font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
-    canvas { display: block; width: 100vw; height: 100vh; cursor: pointer; }
-    #panel { position: fixed; top: 12px; left: 12px; background: #0d1220cc; border: 1px solid #25304d; border-radius: 8px; padding: 12px; width: 260px; backdrop-filter: blur(4px); }
-    #panel h1 { font-size: 15px; margin: 0 0 8px; }
-    #panel label { display: block; margin-top: 8px; font-size: 12px; color: #9fb0d0; }
-    #panel input[type=range], #panel select { width: 100%; }
-    #panel button { margin-top: 8px; padding: 4px 10px; }
-    #date { font-variant-numeric: tabular-nums; font-weight: 600; }
-    #info { margin-top: 10px; padding-top: 8px; border-top: 1px solid #25304d; font-size: 12px; min-height: 90px; }
+    body { margin: 0; background: #000; color: #dfe6f5; font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
+    canvas { display: block; }
+    #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+    .label { position: absolute; transform: translate(8px, -50%); color: #9fb0d0; font-size: 11px; cursor: pointer; pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000; }
+    .label.focus { color: #fff; font-weight: 600; }
+    .label::before { content: ''; position: absolute; left: -8px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%; background: currentColor; }
+    #panel { position: fixed; top: 10px; left: 10px; width: 290px; max-height: calc(100vh - 20px); overflow: auto; background: #0b101ddd; border: 1px solid #25304d; border-radius: 8px; padding: 12px; backdrop-filter: blur(4px); }
+    #panel h1 { font-size: 15px; margin: 0 0 2px; }
+    #panel h2 { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #7f90b3; margin: 12px 0 4px; }
+    #panel select, #panel input[type=datetime-local] { width: 100%; background: #131a2e; color: inherit; border: 1px solid #2b3858; border-radius: 4px; padding: 3px; }
+    #panel button { background: #17203a; color: inherit; border: 1px solid #2b3858; border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+    #panel button:hover, #panel button.on { background: #2a3a6a; }
+    .row { display: flex; gap: 4px; flex-wrap: wrap; }
+    #date { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    #info { font-size: 12px; min-height: 120px; color: #c4d0ea; }
+    #hint { color: #6f7fa3; font-size: 11px; margin-top: 8px; }
+    label.chk { display: inline-flex; gap: 4px; align-items: center; margin-right: 10px; }
   </style>
 </head>
 <body>
-  <canvas id="c"></canvas>
+  <div id="labels"></div>
   <div id="panel">
     <h1>Sistema Solar Lab</h1>
+    <div style="color:#7f90b3">3D + tempo · escala real</div>
+
+    <h2>Tempo (4ª dimensão) — UTC</h2>
     <div id="date"></div>
-    <button id="play">Pausar</button>
-    <button id="now">Hoje</button>
-    <label>Velocidade: <span id="speedLabel"></span>
-      <input id="speed" type="range" min="-1" max="3.6" step="0.01" value="1.5">
-    </label>
-    <label>Escala de distância
-      <select id="scale">
-        <option value="sqrt">Comprimida (√r)</option>
-        <option value="linear">Linear (real)</option>
-      </select>
-    </label>
-    <div id="info">Clique num planeta para ver os dados.</div>
+    <div class="row" style="margin-top:6px">
+      <button id="rev" title="Inverter sentido do tempo">◀◀</button>
+      <button id="play">⏸</button>
+      <button id="fwd" title="Avançar">▶▶</button>
+      <button id="now">Agora</button>
+    </div>
+    <div style="margin-top:6px"><select id="rate"></select></div>
+    <div style="margin-top:6px"><input id="jump" type="datetime-local"></div>
+
+    <h2>Ir para</h2>
+    <div class="row" id="goto"></div>
+
+    <h2>Escala dos corpos</h2>
+    <select id="exag">
+      <option value="1">Real (1:1)</option>
+      <option value="10">Planetas ampliados 10×</option>
+      <option value="30">Planetas ampliados 30×</option>
+    </select>
+    <div style="margin-top:6px">
+      <label class="chk"><input id="showOrbits" type="checkbox" checked> órbitas</label>
+      <label class="chk"><input id="showLabels" type="checkbox" checked> rótulos</label>
+    </div>
+
+    <h2>Corpo em foco</h2>
+    <div id="info"></div>
+    <div id="hint">Arraste: girar · Roda/pinça: aproximar (de km a bilhões de km) · Clique num rótulo: voar até o corpo · Espaço: pausar</div>
   </div>
   <script type="module" src="src/main.js"></script>
 </body>

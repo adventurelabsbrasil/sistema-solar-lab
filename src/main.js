@@ -1,128 +1,343 @@
-import { PLANETS, SUN } from './data/planets.js';
-import { position, orbitPath, daysSinceJ2000, dateFromDays, LIGHT_MIN_PER_AU } from './orbits.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { SUN, PLANETS, MOON, RINGS, AU_KM } from './data/bodies.js';
+import { position, orbitPath, daysSinceJ2000, dateFromDays, eclipticToScene, LIGHT_MIN_PER_AU } from './orbits.js';
+import { makeTexture, makeStars, makeRingTexture } from './textures.js';
 
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
 const $ = (id) => document.getElementById(id);
 
+// 1 unidade de cena = 1 milhão de km. Tudo em escala real (distâncias e raios).
+const UNIT_KM = 1e6;
+const AU_U = AU_KM / UNIT_KM;
+const MAX_DAYS = 3e6; // ±8200 anos — limite do objeto Date com folga
+
+// ── Estado ────────────────────────────────────────────────────────────────────
+const RATES = [
+  ['1 segundo / s (tempo real)', 1 / 86400],
+  ['1 minuto / s', 1 / 1440],
+  ['1 hora / s', 1 / 24],
+  ['1 dia / s', 1],
+  ['10 dias / s', 10],
+  ['1 mês / s', 30.4375],
+  ['1 ano / s', 365.25],
+  ['10 anos / s', 3652.5],
+  ['100 anos / s', 36525],
+];
 const state = {
   days: daysSinceJ2000(new Date()),
-  speed: 10 ** 1.5, // dias simulados por segundo real
+  rate: 1, // dias simulados por segundo real (módulo)
+  dir: 1, // +1 avança, -1 retrocede
   paused: false,
-  scale: 'sqrt',
-  selected: null,
+  exag: 1, // ampliação dos planetas/Lua (Sol sempre 1:1)
 };
 
-const MAX_AU = 31;
-let W = 0, H = 0, dpr = 1;
+// ── Cena ──────────────────────────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.prepend(renderer.domElement);
 
+const scene = new THREE.Scene();
+scene.add(makeStars());
+// Origem flutuante: `world` é deslocado a cada quadro para que o ponto focado fique em (0,0,0).
+// Evita jitter de float32 a bilhões de km do Sol.
+const world = new THREE.Group();
+scene.add(world);
+
+const camera = new THREE.PerspectiveCamera(50, 1, 1e-6, 1e6);
+camera.position.set(0, 0.02, 0.06);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enablePan = false;
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.zoomSpeed = 1.6;
+controls.minDistance = 1e-5;
+controls.maxDistance = 3e4;
+
+world.add(new THREE.PointLight(0xffffff, 3.2, 0, 0)); // luz do Sol (na origem do `world`)
+scene.add(new THREE.AmbientLight(0xffffff, 0.07));
+
+// ── Corpos ────────────────────────────────────────────────────────────────────
+const labelsEl = $('labels');
+const bodies = [];
+const byId = {};
+
+function makeBody(def) {
+  const anchor = new THREE.Group();
+  const tilt = new THREE.Group();
+  tilt.rotation.x = THREE.MathUtils.degToRad(def.tilt);
+  const mat = def.kind === 'sun'
+    ? new THREE.MeshBasicMaterial({ map: makeTexture(def) })
+    : new THREE.MeshStandardMaterial({ map: makeTexture(def), roughness: 1, metalness: 0 });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 32), mat);
+  tilt.add(mesh);
+
+  let ring = null;
+  const r = RINGS[def.id];
+  if (r) {
+    const geo = new THREE.RingGeometry(r.inner / UNIT_KM, r.outer / UNIT_KM, 192);
+    const pos = geo.attributes.position, uv = geo.attributes.uv;
+    for (let i = 0; i < pos.count; i++) { // UV radial: u = fração entre borda interna e externa
+      uv.setXY(i, (Math.hypot(pos.getX(i), pos.getY(i)) - r.inner / UNIT_KM) / ((r.outer - r.inner) / UNIT_KM), 0.5);
+    }
+    ring = new THREE.Mesh(
+      geo,
+      new THREE.MeshBasicMaterial({ map: makeRingTexture(r.inner, r.outer), side: THREE.DoubleSide, transparent: true, depthWrite: false }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    tilt.add(ring);
+  }
+  anchor.add(tilt);
+  world.add(anchor);
+
+  const label = document.createElement('div');
+  label.className = 'label';
+  label.textContent = def.name;
+  label.addEventListener('click', () => focusOn(body));
+  labelsEl.appendChild(label);
+
+  const body = { def, anchor, tilt, mesh, ring, label, pos: new THREE.Vector3(), orbit: null };
+  bodies.push(body);
+  byId[def.id] = body;
+  return body;
+}
+
+function makeOrbitLine(def, parent) {
+  const pts = orbitPath(def, 360).map((p) => {
+    const s = eclipticToScene(p);
+    return new THREE.Vector3(s.x * AU_U, s.y * AU_U, s.z * AU_U); // UA → unidades de cena
+  });
+  const line = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({ color: def === MOON ? 0x6b7aa8 : 0x3a4a78, transparent: true, opacity: 0.85 }),
+  );
+  parent.add(line);
+  return line;
+}
+
+makeBody(SUN);
+PLANETS.forEach((p) => { makeBody(p).orbit = makeOrbitLine(p, world); });
+makeBody(MOON).orbit = makeOrbitLine(MOON, world);
+
+const scaleOf = (b) => (b.def === SUN ? 1 : state.exag);
+const radiusU = (b) => (b.def.radius / UNIT_KM) * scaleOf(b);
+
+function updateBodies() {
+  for (const b of bodies) {
+    const d = b.def;
+    if (d === SUN) b.pos.set(0, 0, 0);
+    else if (d === MOON) {
+      const s = eclipticToScene(position(d, state.days));
+      b.pos.set(s.x, s.y, s.z).multiplyScalar(AU_U).add(byId.terra.pos);
+    } else {
+      const s = eclipticToScene(position(d, state.days));
+      b.pos.set(s.x, s.y, s.z).multiplyScalar(AU_U);
+    }
+    b.anchor.position.copy(b.pos);
+    b.mesh.scale.setScalar(radiusU(b));
+    if (b.ring) b.ring.scale.setScalar(scaleOf(b));
+    b.mesh.rotation.y = ((state.days * 24) / d.rotHours) * Math.PI * 2;
+    if (d === MOON) {
+      b.orbit.position.copy(byId.terra.pos);
+      const arr = b.orbit.geometry.attributes.position; // nó e perigeu da Lua precessionam: redesenha a elipse no instante atual
+      orbitPath(d, arr.count, state.days).forEach((p, i) => {
+        const s = eclipticToScene(p);
+        arr.setXYZ(i, s.x * AU_U, s.y * AU_U, s.z * AU_U);
+      });
+      arr.needsUpdate = true;
+      b.orbit.geometry.computeBoundingSphere();
+    }
+    else if (b.orbit) b.orbit.position.set(0, 0, 0);
+  }
+}
+
+// ── Foco / voo ────────────────────────────────────────────────────────────────
+const view = { body: byId.terra, center: new THREE.Vector3() };
+let transition = null;
+const ease = (t) => t * t * (3 - 2 * t);
+
+function focusOn(body, distance) {
+  const toDist = distance ?? Math.max(radiusU(body) * 4, 1e-4);
+  controls.minDistance = 1e-6;
+  transition = {
+    t0: performance.now(),
+    dur: 2400,
+    from: view.center.clone(),
+    fromDist: camera.position.length(),
+    toDist,
+    minDist: radiusU(body) * 1.05,
+  };
+  view.body = body;
+  for (const b of bodies) b.label.classList.toggle('focus', b === body);
+}
+
+function overview() {
+  focusOn(byId.sol, 9000);
+}
+
+function applyView() {
+  const target = view.body.pos;
+  let dist = camera.position.length();
+  if (transition) {
+    const p = Math.min((performance.now() - transition.t0) / transition.dur, 1);
+    const k = ease(p);
+    view.center.lerpVectors(transition.from, target, k);
+    dist = transition.fromDist * (transition.toDist / transition.fromDist) ** k; // interpolação geométrica
+    camera.position.setLength(dist);
+    if (p >= 1) {
+      controls.minDistance = transition.minDist;
+      transition = null;
+    }
+  } else {
+    view.center.copy(target);
+  }
+  world.position.copy(view.center).negate();
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+const goto = $('goto');
+const addBtn = (text, fn) => {
+  const b = document.createElement('button');
+  b.textContent = text;
+  b.addEventListener('click', fn);
+  goto.appendChild(b);
+};
+addBtn('Visão geral', overview);
+for (const b of bodies) addBtn(b.def.name, () => focusOn(b));
+
+RATES.forEach(([text, v]) => {
+  const o = document.createElement('option');
+  o.value = String(v);
+  o.textContent = text;
+  if (v === 1) o.selected = true;
+  $('rate').appendChild(o);
+});
+$('rate').addEventListener('change', (e) => { state.rate = Number(e.target.value); });
+
+const setDir = (dir) => {
+  state.dir = dir;
+  state.paused = false;
+  syncButtons();
+};
+function syncButtons() {
+  $('play').textContent = state.paused ? '▶' : '⏸';
+  $('rev').classList.toggle('on', !state.paused && state.dir < 0);
+  $('fwd').classList.toggle('on', !state.paused && state.dir > 0);
+}
+$('rev').addEventListener('click', () => setDir(-1));
+$('fwd').addEventListener('click', () => setDir(1));
+$('play').addEventListener('click', () => { state.paused = !state.paused; syncButtons(); });
+$('now').addEventListener('click', () => { state.days = daysSinceJ2000(new Date()); });
+$('jump').addEventListener('change', (e) => {
+  const t = Date.parse(`${e.target.value}:00Z`);
+  if (!Number.isNaN(t)) state.days = THREE.MathUtils.clamp(daysSinceJ2000(new Date(t)), -MAX_DAYS, MAX_DAYS);
+});
+$('exag').addEventListener('change', (e) => {
+  state.exag = Number(e.target.value);
+  if (!transition) controls.minDistance = radiusU(view.body) * 1.05;
+});
+$('showOrbits').addEventListener('change', (e) => { for (const b of bodies) if (b.orbit) b.orbit.visible = e.target.checked; });
+$('showLabels').addEventListener('change', (e) => { labelsEl.style.display = e.target.checked ? '' : 'none'; });
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && e.target === document.body) {
+    e.preventDefault();
+    state.paused = !state.paused;
+    syncButtons();
+  }
+});
+
+const nf = (n, d = 0) => n.toLocaleString('pt-BR', { maximumFractionDigits: d });
+function fmtKm(km) {
+  if (km < 1e7) return `${nf(km)} km`;
+  const au = km / AU_KM;
+  return `${nf(au, au < 10 ? 3 : 2)} UA (${nf(km / 1e6, 0)} mi km)`;
+}
+
+function updateInfo() {
+  const b = view.body, d = b.def;
+  const sunDistKm = b.pos.length() * UNIT_KM;
+  const camKm = camera.position.length() * UNIT_KM;
+  const lines = [`<b>${d.name}</b>`];
+  lines.push(`Raio: ${nf(d.radius, 1)} km (${nf(d.radius / 6371, 2)}× Terra)`);
+  if (d !== SUN) {
+    const rel = d === MOON ? byId.terra.pos.distanceTo(b.pos) * UNIT_KM : sunDistKm;
+    lines.push(`${d === MOON ? 'Distância à Terra' : 'Distância ao Sol'}: ${fmtKm(rel)}`);
+    if (d !== MOON) lines.push(`Luz do Sol leva ${nf((sunDistKm / AU_KM) * LIGHT_MIN_PER_AU, 1)} min`);
+    lines.push(`Órbita: ${nf(d.period, 1)} dias${d.period > 700 ? ` (${nf(d.period / 365.256, 1)} anos)` : ''} · e = ${d.e.toFixed(4)} · i = ${(Math.round(d.I * 100) / 100 + 0).toFixed(2)}°`);
+    // Proporção didática: se este corpo tivesse 1 cm de raio, onde estaria o Sol?
+    const sunAtM = ((d === MOON ? byId.terra.pos.distanceTo(b.pos) : b.pos.length()) * UNIT_KM / d.radius) / 100;
+    lines.push(`Em escala: com ${d.name === 'Lua' ? 'a Lua' : 'este corpo'} de 1 cm de raio, ${d === MOON ? 'a Terra' : 'o Sol'} ficaria a ${nf(sunAtM, sunAtM < 10 ? 1 : 0)} m`);
+  }
+  lines.push(`Rotação: ${nf(d.rotHours, 1)} h · obliquidade ${d.tilt}°`);
+  lines.push(`<span style="color:#7f90b3">Câmera a ${fmtKm(camKm)} do centro</span>`);
+  $('info').innerHTML = lines.join('<br>');
+}
+
+// ── Loop ──────────────────────────────────────────────────────────────────────
 function resize() {
-  dpr = window.devicePixelRatio || 1;
-  W = window.innerWidth;
-  H = window.innerHeight;
-  canvas.width = W * dpr;
-  canvas.height = H * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize);
 resize();
 
-// Converte UA (x,y) para pixels, aplicando a escala radial escolhida.
-function project({ x, y, r }) {
-  const half = Math.min(W, H) / 2 - 30;
-  const k = r === 0 ? 0 : state.scale === 'sqrt' ? Math.sqrt(r / MAX_AU) / (r / MAX_AU) : 1;
-  const f = (half / MAX_AU) * (state.scale === 'sqrt' ? k : 1);
-  return { px: W / 2 + x * f, py: H / 2 - y * f };
-}
-
-const paths = PLANETS.map((p) => orbitPath(p));
-const screenPos = new Map();
-
-function draw() {
-  ctx.clearRect(0, 0, W, H);
-
-  ctx.lineWidth = 1;
-  PLANETS.forEach((p, i) => {
-    ctx.strokeStyle = p === state.selected ? '#5d7bd6' : '#1c2540';
-    ctx.beginPath();
-    paths[i].forEach((pt, j) => {
-      const { px, py } = project(pt);
-      j ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-    });
-    ctx.stroke();
-  });
-
-  ctx.fillStyle = SUN.color;
-  ctx.beginPath();
-  ctx.arc(W / 2, H / 2, 7, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.font = '11px system-ui';
-  for (const p of PLANETS) {
-    const pos = position(p, state.days);
-    const { px, py } = project(pos);
-    screenPos.set(p, { px, py, r: pos.r });
-    const size = 3 + Math.log10(p.radius / 2000) * 3;
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(px, py, size, 0, Math.PI * 2);
-    ctx.fill();
-    if (p === state.selected) {
-      ctx.strokeStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(px, py, size + 4, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.fillStyle = '#9fb0d0';
-    ctx.fillText(p.name, px + size + 4, py + 4);
+const tmp = new THREE.Vector3();
+function updateLabels() {
+  if (labelsEl.style.display === 'none') return;
+  const w = window.innerWidth, h = window.innerHeight;
+  const moonVisible = view.body === byId.terra || view.body === byId.lua;
+  for (const b of bodies) {
+    tmp.copy(b.pos).add(world.position).project(camera);
+    const hide = tmp.z > 1 || tmp.z < -1 || (b.def === MOON && !moonVisible);
+    b.label.style.display = hide ? 'none' : '';
+    if (!hide) b.label.style.transform = `translate(${(tmp.x * 0.5 + 0.5) * w + 8}px, ${(-tmp.y * 0.5 + 0.5) * h}px) translateY(-50%)`;
   }
-}
-
-function updateInfo() {
-  const p = state.selected;
-  if (!p) return;
-  const r = screenPos.get(p)?.r ?? 0;
-  $('info').innerHTML =
-    `<b>${p.name}</b><br>` +
-    `Distância ao Sol agora: ${r.toFixed(3)} UA (${(r * LIGHT_MIN_PER_AU).toFixed(1)} min-luz)<br>` +
-    `Semi-eixo maior: ${p.a.toFixed(3)} UA · excentricidade: ${p.e.toFixed(4)}<br>` +
-    `Periélio ${(p.a * (1 - p.e)).toFixed(3)} UA · afélio ${(p.a * (1 + p.e)).toFixed(3)} UA<br>` +
-    `Período: ${p.period.toLocaleString('pt-BR')} dias (${(p.period / 365.256).toFixed(2)} anos)<br>` +
-    `Raio: ${p.radius.toLocaleString('pt-BR')} km`;
-}
-
-function updateUi() {
-  $('date').textContent = dateFromDays(state.days).toISOString().slice(0, 10);
-  const s = state.speed;
-  $('speedLabel').textContent = s < 1 ? `${s.toFixed(2)} d/s` : s < 365 ? `${s.toFixed(0)} d/s` : `${(s / 365.256).toFixed(1)} anos/s`;
 }
 
 let last = performance.now();
+let frameNo = 0;
 function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  if (!state.paused) state.days += state.speed * dt;
-  draw();
-  updateUi();
-  updateInfo();
+  if (!state.paused) {
+    state.days = THREE.MathUtils.clamp(state.days + state.dir * state.rate * dt, -MAX_DAYS, MAX_DAYS);
+  }
+  updateBodies();
+  applyView();
+  controls.update();
+  renderer.render(scene, camera);
+  updateLabels();
+
+  if (frameNo++ % 6 === 0) {
+    $('date').textContent = dateFromDays(state.days).toISOString().replace('T', ' ').slice(0, 19);
+    updateInfo();
+  }
+  if (frameNo % 30 === 0 && document.activeElement !== $('jump')) {
+    $('jump').value = dateFromDays(state.days).toISOString().slice(0, 16);
+  }
   requestAnimationFrame(frame);
 }
 
-$('play').addEventListener('click', () => {
-  state.paused = !state.paused;
-  $('play').textContent = state.paused ? 'Continuar' : 'Pausar';
-});
-$('now').addEventListener('click', () => { state.days = daysSinceJ2000(new Date()); });
-$('speed').addEventListener('input', (e) => { state.speed = 10 ** Number(e.target.value); });
-$('scale').addEventListener('change', (e) => { state.scale = e.target.value; });
-canvas.addEventListener('click', (e) => {
-  let best = null, bestD = 18;
-  for (const [p, { px, py }] of screenPos) {
-    const d = Math.hypot(px - e.clientX, py - e.clientY);
-    if (d < bestD) { best = p; bestD = d; }
-  }
-  state.selected = best;
-  if (!best) $('info').textContent = 'Clique num planeta para ver os dados.';
-});
+syncButtons();
+updateBodies();
+view.center.copy(byId.terra.pos);
+focusOn(byId.terra, 0.03);
 
+// Links compartilháveis: ?foco=saturno&data=2030-01-01T12:00&dist=0.5 (dist em milhões de km)
+const qs = new URLSearchParams(location.search);
+if (qs.get('data')) {
+  const raw = qs.get('data');
+  const t = Date.parse(raw.length === 10 ? `${raw}T00:00:00Z` : `${raw}:00Z`);
+  if (!Number.isNaN(t)) state.days = THREE.MathUtils.clamp(daysSinceJ2000(new Date(t)), -MAX_DAYS, MAX_DAYS);
+}
+if (qs.get('rate')) { state.paused = qs.get('rate') === '0'; syncButtons(); }
+if (qs.get('foco') === 'geral') overview();
+else if (byId[qs.get('foco')]) {
+  focusOn(byId[qs.get('foco')], qs.get('dist') ? Number(qs.get('dist')) : undefined);
+  if (qs.get('instant')) transition.dur = 1;
+}
 requestAnimationFrame(frame);
+
+// Gancho de depuração/teste (smoke headless).
+window.__lab = { state, focusOn, byId, camera, overview };
