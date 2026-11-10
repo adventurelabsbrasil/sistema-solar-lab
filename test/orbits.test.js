@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { solveKepler, position, orbitPath, daysSinceJ2000, eclipticToScene } from '../src/orbits.js';
+import { solveKepler, position, orbitPath, daysSinceJ2000, dateFromDays, eclipticToScene, parseUtc, clampDays, MIN_DAYS, MAX_DAYS } from '../src/orbits.js';
 import { PLANETS, MOON, AU_KM } from '../src/data/bodies.js';
 
 const earth = PLANETS.find((p) => p.id === 'terra');
@@ -87,4 +87,22 @@ test('eclipticToScene: norte eclíptico vira +y; (x,y,z)→(x,z,-y)', () => {
 
 test('daysSinceJ2000 de 2000-01-01T12:00Z é 0', () => {
   assert.equal(daysSinceJ2000(new Date(Date.UTC(2000, 0, 1, 12))), 0);
+});
+
+test('parseUtc aceita data, minutos e segundos; rejeita lixo', () => {
+  assert.equal(parseUtc('2030-06-01'), Date.UTC(2030, 5, 1));
+  assert.equal(parseUtc('2030-06-01T12:30'), Date.UTC(2030, 5, 1, 12, 30));
+  assert.equal(parseUtc('2030-06-01T12:30:45'), Date.UTC(2030, 5, 1, 12, 30, 45));
+  for (const bad of ['', 'abc', '2030-13-01', '+010213-01-01T00:00', null, undefined]) {
+    assert.ok(Number.isNaN(parseUtc(bad)), String(bad));
+  }
+});
+
+test('intervalo navegável = anos 0001–9999, sempre com ISO de 4 dígitos', () => {
+  assert.ok(dateFromDays(MIN_DAYS).toISOString().startsWith('0001-01-01'));
+  assert.ok(dateFromDays(MAX_DAYS).toISOString().startsWith('9999-12-31'));
+  assert.equal(clampDays(-1e9), MIN_DAYS);
+  assert.equal(clampDays(1e9), MAX_DAYS);
+  assert.equal(clampDays(123), 123);
+  assert.match(dateFromDays(clampDays(1e9)).toISOString(), /^\d{4}-/);
 });

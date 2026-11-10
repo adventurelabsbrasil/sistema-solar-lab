@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { SUN, PLANETS, MOON, RINGS, AU_KM } from './data/bodies.js';
-import { position, orbitPath, daysSinceJ2000, dateFromDays, eclipticToScene, LIGHT_MIN_PER_AU } from './orbits.js';
+import { position, orbitPath, daysSinceJ2000, dateFromDays, eclipticToScene, clampDays, parseUtc, LIGHT_MIN_PER_AU } from './orbits.js';
 import { makeTexture, makeStars, makeRingTexture } from './textures.js';
 
 const $ = (id) => document.getElementById(id);
@@ -9,7 +9,7 @@ const $ = (id) => document.getElementById(id);
 // 1 unidade de cena = 1 milhão de km. Tudo em escala real (distâncias e raios).
 const UNIT_KM = 1e6;
 const AU_U = AU_KM / UNIT_KM;
-const MAX_DAYS = 3e6; // ±8200 anos — limite do objeto Date com folga
+const MIN_ALT = 1.002; // zoom mínimo: 0,2% do raio acima da superfície (~13 km na Terra)
 
 // ── Estado ────────────────────────────────────────────────────────────────────
 const RATES = [
@@ -165,7 +165,7 @@ function focusOn(body, distance) {
     from: view.center.clone(),
     fromDist: camera.position.length(),
     toDist,
-    minDist: radiusU(body) * 1.05,
+    minDist: radiusU(body) * MIN_ALT,
   };
   view.body = body;
   for (const b of bodies) b.label.classList.toggle('focus', b === body);
@@ -229,17 +229,18 @@ $('fwd').addEventListener('click', () => setDir(1));
 $('play').addEventListener('click', () => { state.paused = !state.paused; syncButtons(); });
 $('now').addEventListener('click', () => { state.days = daysSinceJ2000(new Date()); });
 $('jump').addEventListener('change', (e) => {
-  const t = Date.parse(`${e.target.value}:00Z`);
-  if (!Number.isNaN(t)) state.days = THREE.MathUtils.clamp(daysSinceJ2000(new Date(t)), -MAX_DAYS, MAX_DAYS);
+  const t = parseUtc(e.target.value);
+  if (!Number.isNaN(t)) state.days = clampDays(daysSinceJ2000(new Date(t)));
 });
 $('exag').addEventListener('change', (e) => {
   state.exag = Number(e.target.value);
-  if (!transition) controls.minDistance = radiusU(view.body) * 1.05;
+  if (!transition) controls.minDistance = radiusU(view.body) * MIN_ALT;
 });
 $('showOrbits').addEventListener('change', (e) => { for (const b of bodies) if (b.orbit) b.orbit.visible = e.target.checked; });
 $('showLabels').addEventListener('change', (e) => { labelsEl.style.display = e.target.checked ? '' : 'none'; });
+$('panel').addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') e.target.blur(); });
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' && e.target === document.body) {
+  if (e.code === 'Space' && !['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(e.target.tagName)) {
     e.preventDefault();
     state.paused = !state.paused;
     syncButtons();
@@ -301,7 +302,7 @@ function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
   if (!state.paused) {
-    state.days = THREE.MathUtils.clamp(state.days + state.dir * state.rate * dt, -MAX_DAYS, MAX_DAYS);
+    state.days = clampDays(state.days + state.dir * state.rate * dt);
   }
   updateBodies();
   applyView();
@@ -327,9 +328,8 @@ focusOn(byId.terra, 0.03);
 // Links compartilháveis: ?foco=saturno&data=2030-01-01T12:00&dist=0.5 (dist em milhões de km)
 const qs = new URLSearchParams(location.search);
 if (qs.get('data')) {
-  const raw = qs.get('data');
-  const t = Date.parse(raw.length === 10 ? `${raw}T00:00:00Z` : `${raw}:00Z`);
-  if (!Number.isNaN(t)) state.days = THREE.MathUtils.clamp(daysSinceJ2000(new Date(t)), -MAX_DAYS, MAX_DAYS);
+  const t = parseUtc(qs.get('data'));
+  if (!Number.isNaN(t)) state.days = clampDays(daysSinceJ2000(new Date(t)));
 }
 if (qs.get('rate')) { state.paused = qs.get('rate') === '0'; syncButtons(); }
 if (qs.get('foco') === 'geral') overview();

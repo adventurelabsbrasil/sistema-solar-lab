@@ -13,11 +13,12 @@ npm test           # node --test — mecânica orbital
 
 ## As 4 dimensões
 
-- **3 espaciais:** câmera orbital com zoom de ~10 km até dezenas de bilhões de km. Origem flutuante
+- **3 espaciais:** câmera orbital com zoom desde ~0,2% do raio acima da superfície (~13 km na Terra) até 200 UA. Origem flutuante
   (o ponto em foco fica sempre em 0,0,0) e depth buffer logarítmico — sem tremedeira nem clipping
   mesmo a 30 UA do Sol. Clique num rótulo ou botão "Ir para" para voar até o corpo.
 - **Tempo:** ◀◀ retrocede, ▶▶ avança, ⏸ pausa; de 1 s/s (tempo real) a 100 anos/s; campo de data
-  para saltar a qualquer instante (±8 000 anos). Espaço pausa.
+  para saltar a qualquer instante dos anos 0001–9999 (UTC). Espaço pausa. Fora de ~1800–2050 as
+  posições são extrapolação (ver limitações).
 
 ## Proporções reais
 

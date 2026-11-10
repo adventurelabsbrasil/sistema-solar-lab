@@ -47,7 +47,7 @@
       <button id="now">Agora</button>
     </div>
     <div style="margin-top:6px"><select id="rate"></select></div>
-    <div style="margin-top:6px"><input id="jump" type="datetime-local"></div>
+    <div style="margin-top:6px"><input id="jump" type="datetime-local" min="0001-01-01T00:00" max="9999-12-31T23:59"></div>
 
     <h2>Ir para</h2>
     <div class="row" id="goto"></div>
@@ -65,7 +65,7 @@
 
     <h2>Corpo em foco</h2>
     <div id="info"></div>
-    <div id="hint">Arraste: girar · Roda/pinça: aproximar (de km a bilhões de km) · Clique num rótulo: voar até o corpo · Espaço: pausar</div>
+    <div id="hint">Arraste: girar · Roda/pinça: aproximar (da superfície até ~200 UA) · Clique num rótulo: voar até o corpo · Espaço: pausar</div>
   </div>
   <script type="module" src="src/main.js"></script>
 </body>

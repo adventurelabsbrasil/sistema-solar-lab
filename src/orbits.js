@@ -10,6 +10,18 @@ export const LIGHT_MIN_PER_AU = 8.316746;
 export const daysSinceJ2000 = (date) => (date.getTime() - J2000_MS) / MS_PER_DAY;
 export const dateFromDays = (days) => new Date(J2000_MS + days * MS_PER_DAY);
 
+// Intervalo navegável: anos 0001–9999 (únicos que o ISO-8601 de 4 dígitos e o <input datetime-local> representam).
+export const MIN_DAYS = daysSinceJ2000(new Date('0001-01-01T00:00:00Z'));
+export const MAX_DAYS = daysSinceJ2000(new Date('9999-12-31T23:59:59Z'));
+export const clampDays = (d) => Math.min(MAX_DAYS, Math.max(MIN_DAYS, d));
+
+/** 'YYYY-MM-DD' | 'YYYY-MM-DDTHH:MM' | 'YYYY-MM-DDTHH:MM:SS' (UTC) → ms, ou NaN se inválido. */
+export function parseUtc(text) {
+  const m = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2})(?::(\d{2}))?)?$/.exec(text ?? '');
+  if (!m) return NaN;
+  return Date.parse(`${m[1]}T${m[2] ?? '00:00'}:${m[3] ?? '00'}Z`);
+}
+
 /** Resolve a equação de Kepler M = E - e·sin(E) por Newton-Raphson. M em rad. */
 export function solveKepler(M, e, tol = 1e-12) {
   const m = ((((M + Math.PI) % TWO_PI) + TWO_PI) % TWO_PI) - Math.PI;
