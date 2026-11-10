@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sistema Solar Lab</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #05070f; color: #dfe6f5; font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+    canvas { display: block; width: 100vw; height: 100vh; cursor: pointer; }
+    #panel { position: fixed; top: 12px; left: 12px; background: #0d1220cc; border: 1px solid #25304d; border-radius: 8px; padding: 12px; width: 260px; backdrop-filter: blur(4px); }
+    #panel h1 { font-size: 15px; margin: 0 0 8px; }
+    #panel label { display: block; margin-top: 8px; font-size: 12px; color: #9fb0d0; }
+    #panel input[type=range], #panel select { width: 100%; }
+    #panel button { margin-top: 8px; padding: 4px 10px; }
+    #date { font-variant-numeric: tabular-nums; font-weight: 600; }
+    #info { margin-top: 10px; padding-top: 8px; border-top: 1px solid #25304d; font-size: 12px; min-height: 90px; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="panel">
+    <h1>Sistema Solar Lab</h1>
+    <div id="date"></div>
+    <button id="play">Pausar</button>
+    <button id="now">Hoje</button>
+    <label>Velocidade: <span id="speedLabel"></span>
+      <input id="speed" type="range" min="-1" max="3.6" step="0.01" value="1.5">
+    </label>
+    <label>Escala de distância
+      <select id="scale">
+        <option value="sqrt">Comprimida (√r)</option>
+        <option value="linear">Linear (real)</option>
+      </select>
+    </label>
+    <div id="info">Clique num planeta para ver os dados.</div>
+  </div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

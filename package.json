@@ -1,0 +1,11 @@
+{
+  "name": "sistema-solar-lab",
+  "version": "0.1.0",
+  "description": "Laboratório do sistema solar: simulação orbital kepleriana no browser, sem build.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node --test"
+  }
+}
