@@ -75,6 +75,44 @@ test('Lua: plano orbital inclinado ~5° (máx |z|/r ≈ sin 5.145°)', () => {
   assert.ok(Math.abs(maxRatio - Math.sin(5.145 * DEG)) < 0.002, `ratio ${maxRatio}`);
 });
 
+test('elementos da Lua batem com Simon et al. 1994 e a ficha da NASA (fixture)', () => {
+  const fx = JSON.parse(readFileSync(new URL('./fixtures/lua-elementos.json', import.meta.url), 'utf8'));
+  const s = fx.simon_b1_j2000, n = fx.nasa_factsheet;
+  const perDay = (arcsecCy) => arcsecCy / 3600 / 36525;
+  assert.deepEqual([MOON.L0, MOON.Ldot], [s.lambda[0], s.lambda[1] / 3600]);
+  assert.deepEqual([MOON.varpi, MOON.dVarpi], [s.varpi[0], perDay(s.varpi[1])]);
+  assert.deepEqual([MOON.Omega, MOON.dOmega], [s.Omega[0], perDay(s.Omega[1])]);
+  assert.deepEqual(
+    [MOON.a * AU_KM, MOON.e, MOON.I, MOON.period, MOON.radius, MOON.rotHours, MOON.tilt],
+    [n.semimajor_axis_1e6_km * 1e6, n.orbit_eccentricity, n.inclination_to_ecliptic_deg, n.revolution_period_days,
+      n.volumetric_mean_radius_km, n.sidereal_rotation_period_hrs, n.obliquity_to_orbit_deg],
+  );
+  assert.ok(Math.abs(MOON.a * AU_KM - 384400) < 1e-6);
+  const T = 360 / meanMotion(MOON);
+  assert.ok(Math.abs(T - MOON.period) / T < 5e-5, `período ${T}`);
+});
+
+test('Lua acompanha o JPL Horizons (DE441) nos anos 1000, 2000 e 3000', () => {
+  // Kepler com elementos médios ignora evecção, variação etc. (~1° de erro típico); o que o teste pega é
+  // deriva secular, p. ex. taxas do nó/perigeu no equinócio da data em vez de J2000 (0,8° de latitude em ±1000 anos).
+  const fx = JSON.parse(readFileSync(new URL('./fixtures/horizons-lua.json', import.meta.url), 'utf8'));
+  for (const [epoch, rows] of Object.entries(fx.series)) {
+    let sep = 0, dLat = 0, dR = 0;
+    for (const [jd, x, y, z] of rows) {
+      const p = position(MOON, jd - 2451545);
+      const P = [p.x * AU_KM, p.y * AU_KM, p.z * AU_KM];
+      const r = Math.hypot(...P), rh = Math.hypot(x, y, z);
+      sep += Math.acos(Math.min(1, (P[0] * x + P[1] * y + P[2] * z) / (r * rh))) / DEG;
+      dLat += Math.abs(Math.asin(P[2] / r) - Math.asin(z / rh)) / DEG;
+      dR += r - rh;
+    }
+    const n = rows.length;
+    assert.ok(sep / n < 1.0, `JD ${epoch}: separação média ${sep / n}°`);
+    assert.ok(dLat / n < 0.2, `JD ${epoch}: erro médio de latitude ${dLat / n}°`);
+    assert.ok(Math.abs(dR / n) < 300, `JD ${epoch}: viés de distância ${dR / n} km`);
+  }
+});
+
 test('orbitPath fecha a elipse e tem N pontos distintos', () => {
   const pts = orbitPath(earth, 90);
   assert.equal(pts.length, 90);

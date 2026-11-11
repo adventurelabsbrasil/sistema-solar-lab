@@ -1,0 +1,28 @@
+{
+ "_fonte_simon": "J. L. Simon, P. Bretagnon, J. Chapront, M. Chapront-Touzé, G. Francou, J. Laskar (1994), A&A 282, 663, §3.4 (b.1), p. 669: elementos médios da Lua, valores \"1992\", eclíptica e equinócio médios J2000. Constantes em graus; coeficientes de t (séculos julianos TDB desde J2000) em segundos de arco. https://ui.adsabs.harvard.edu/abs/1994A%26A...282..663S",
+ "_fonte_nasa": "NASA NSSDCA, Moon Fact Sheet. https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html",
+ "_acessado": "2026-11-11",
+ "simon_b1_j2000": {
+  "lambda": [
+   218.31664563,
+   1732559343.4847
+  ],
+  "varpi": [
+   83.35324312,
+   14643420.2669
+  ],
+  "Omega": [
+   125.04455501,
+   -6967919.3631
+  ]
+ },
+ "nasa_factsheet": {
+  "semimajor_axis_1e6_km": 0.3844,
+  "revolution_period_days": 27.3217,
+  "orbit_eccentricity": 0.0549,
+  "inclination_to_ecliptic_deg": 5.145,
+  "volumetric_mean_radius_km": 1737.4,
+  "sidereal_rotation_period_hrs": 655.72,
+  "obliquity_to_orbit_deg": 6.68
+ }
+}

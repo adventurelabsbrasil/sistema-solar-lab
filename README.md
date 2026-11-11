@@ -33,7 +33,7 @@ Arraste para girar, use a roda (ou pinça) para aproximar, de ~13 km acima da su
 
 ## Corpos
 
-Sol, 8 planetas (inclinação e nó orbital, obliquidade do eixo, rotação, anéis de Saturno) e a Lua (com precessão do nó e do perigeu). Os elementos dos planetas são conferidos por teste contra a [Tabela 1 da JPL](https://ssd.jpl.nasa.gov/planets/approx_pos.html).
+Sol, 8 planetas (inclinação e nó orbital, obliquidade do eixo, rotação, anéis de Saturno) e a Lua (com precessão do nó e do perigeu). Os elementos dos planetas são conferidos por teste contra a [Tabela 1 da JPL](https://ssd.jpl.nasa.gov/planets/approx_pos.html). Os da Lua, contra Simon et al. (1994) e a ficha da NASA, e a posição dela contra o [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) nos anos 1000, 2000 e 3000.
 
 ## Céu real
 
@@ -94,7 +94,7 @@ docs/decisoes/          decisões de projeto
 ## Limitações
 
 - Elementos médios de J2000: fora de ~1800–2050 as posições são extrapolação. Sem perturbações planeta–planeta nem as taxas seculares (exceto a da longitude média).
-- Elementos da Lua (Meeus) conferidos só por coerência interna, não contra a fonte.
+- A Lua é uma elipse kepleriana com nó e perigeu precessionando, sem evecção, variação e demais perturbações solares: erro médio de ~0,9° na posição e ~3 000 km na distância em relação ao JPL Horizons.
 - A direção dos polos de rotação é aproximada (a obliquidade é correta).
 - Sem Via Láctea, planetas-anões, luas dos gigantes nem cometas; estrelas sem paralaxe e só até mag 6,5.
 - Lua em baixa resolução (1080×540).

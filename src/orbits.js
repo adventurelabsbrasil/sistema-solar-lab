@@ -34,7 +34,7 @@ export function solveKepler(M, e, tol = 1e-12) {
   return E;
 }
 
-/** Movimento médio (°/dia): taxa JPL da longitude média (planetas) ou 360/período (Lua). */
+/** Movimento médio (°/dia): taxa da longitude média (JPL para planetas, Simon et al. para a Lua) ou 360/período. */
 export const meanMotion = (body) => (body.Ldot != null ? body.Ldot / 36525 : 360 / body.period);
 
 /** Posição (UA, eclíptica) após `days` dias desde J2000, em relação ao corpo central. */

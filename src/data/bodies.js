@@ -4,7 +4,7 @@
 //   a        semi-eixo maior (UA)         e      excentricidade
 //   I        inclinação à eclíptica (°)   Omega  longitude do nó ascendente (°)
 //   L0       longitude média J2000 (°)    varpi  longitude do periélio (°)
-//   period   período sideral (dias, só exibição)   Ldot  taxa da longitude média (°/século, JPL) usada na propagação
+//   period   período sideral (dias, só exibição)   Ldot  taxa da longitude média (°/século) usada na propagação
 //   dVarpi/dOmega  precessão (°/dia, opcional; só a Lua)
 //   radius   raio médio (km)              rotHours  período de rotação (h)
 //   tilt     obliquidade do eixo (°; >90 = rotação retrógrada)
@@ -26,12 +26,17 @@ export const PLANETS = [
   { id: 'netuno', Ldot: 218.45945325, name: 'Netuno', a: 30.06992276, e: 0.00859048, I: 1.77004347, Omega: 131.78422574, L0: -55.12002969, varpi: 44.96476227, period: 60189, radius: 24622, color: '#3f5fe0', kind: 'bands', rotHours: 16.11, tilt: 28.32 },
 ];
 
-// Lua: elementos geocêntricos (Meeus). Nó regride ~18,6 anos, perigeu avança ~8,85 anos.
+// Lua: elementos geocêntricos. Longitude média, perigeu e nó (com as taxas) de Simon et al. 1994,
+// A&A 282, 663, §3.4 (b.1) — eclíptica e equinócio J2000, como o resto do modelo; só termos lineares.
+// a, e, I, raio, rotação e obliquidade da NASA Moon Fact Sheet (o ⟨a⟩ osculador de Simon subestima a
+// distância média em ~1 000 km). Nó regride ~18,6 anos, perigeu avança ~8,85 anos.
+const ARCSEC_CY_TO_DEG_DAY = 1 / 3600 / 36525;
 export const MOON = {
   id: 'lua', name: 'Lua', parent: 'terra',
-  a: 384399 / AU_KM, e: 0.0549, I: 5.145, Omega: 125.0445479, L0: 218.3164477, varpi: 83.3532465,
-  period: 27.321662, dVarpi: 0.1114041, dOmega: -0.0529539,
-  radius: 1737.4, color: '#b9b6b0', kind: 'rock', rotHours: 27.321662 * 24, tilt: 6.68,
+  a: 384400 / AU_KM, e: 0.0549, I: 5.145, Omega: 125.04455501, L0: 218.31664563, varpi: 83.35324312,
+  Ldot: 1732559343.4847 / 3600, period: 27.3217,
+  dVarpi: 14643420.2669 * ARCSEC_CY_TO_DEG_DAY, dOmega: -6967919.3631 * ARCSEC_CY_TO_DEG_DAY,
+  radius: 1737.4, color: '#b9b6b0', kind: 'rock', rotHours: 655.72, tilt: 6.68,
 };
 
 // Anéis de Saturno (km do centro do planeta): borda interna do anel D até a externa do anel A/F.
