@@ -9,17 +9,17 @@ Primeira versão pública.
 ### Adicionado
 - Simulador 3D em **escala real** (1 unidade = 1 milhão de km): Sol, 8 planetas e a Lua, com inclinação, nó orbital, obliquidade, rotação e anéis de Saturno.
 - Navegação em **4 dimensões**: câmera orbital com origem flutuante e depth buffer logarítmico (de ~13 km da superfície a 200 UA) e tempo bidirecional (◀◀ ⏸ ▶▶, de 1 s/s a 100 anos/s, datas de 0001 a 9999 UTC).
-- Mecânica orbital kepleriana com elementos J2000 da JPL; os 48 elementos dos planetas são conferidos por teste contra a Tabela 1 da JPL. Lua com precessão do nó e do perigeu.
+- Mecânica orbital kepleriana com elementos J2000 da JPL; os 48 elementos dos planetas são conferidos por teste contra a Tabela 1 da JPL. Lua com elementos de Simon et al. (1994), precessão do nó e do perigeu, testada contra o JPL Horizons.
 - **Céu real:** 8 920 estrelas (HYG v4.1, até mag 6,5) e as 88 constelações (d3-celestial), com cor pela temperatura e brilho pela magnitude.
 - **Texturas reais** de domínio público (Mercúrio, Terra, Lua, Marte, Júpiter) e Saturno em CC BY-SA 3.0, com carga isolada por corpo (uma falha não afeta as demais).
 - Painel de controles **ocultável** (`H` / botão ☰) e **modo noturno vermelho** (`N`) com nota explicativa (i).
 - Links compartilháveis por query (`foco`, `dist`, `data`, `rate`, `look`, `noturno`, `controles`).
-- Scripts reprodutíveis `scripts/build-sky.py` e `scripts/fetch-textures.py`; 22 testes (`node --test`).
+- Scripts reprodutíveis `scripts/build-sky.py` e `scripts/fetch-textures.py`; 30 testes (`node --test`).
 - LICENSE MIT, CONTRIBUTING (DCO), ATTRIBUTION e `docs/decisoes/`.
 
 ### Limitações conhecidas
 - Sol, Vênus, Urano e Netuno usam texturas procedurais; Lua em baixa resolução (1080×540).
 - Fora de ~1800–2050 as posições são extrapolação; sem perturbações planeta–planeta.
-- Elementos da Lua (Meeus) conferidos só por coerência interna.
+- A Lua é uma elipse kepleriana (nó e perigeu precessionando) sem evecção, variação e demais perturbações solares: erro médio de ~0,9° na posição e ~3 000 km na distância em relação ao JPL Horizons.
 
 [0.1.0]: https://github.com/adventurelabsbrasil/sistema-solar-lab/releases/tag/v0.1.0
