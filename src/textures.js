@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { applyTextures } from './texture-loader.js';
 
 // Texturas procedurais (sem assets): só o suficiente para a rotação ser visível.
 // Gerador pseudoaleatório determinístico (mulberry32) — mesma textura a cada carga.
@@ -136,19 +137,11 @@ export async function loadRealTextures(bodies, maxAnisotropy = 4) {
     tex.anisotropy = maxAnisotropy;
     return tex;
   };
-  const found = [];
+  const targets = [];
   for (const b of bodies) {
     const f = TEXTURE_FILES[b.def.id];
-    if (f && (await exists(f))) {
-      b.mesh.material.map = await load(f);
-      b.mesh.material.needsUpdate = true;
-      found.push(b.def.id);
-    }
-    if (b.ring && (await exists(RING_FILE))) {
-      b.ring.material.map = await load(RING_FILE);
-      b.ring.material.needsUpdate = true;
-      found.push(`${b.def.id}-aneis`);
-    }
+    if (f) targets.push({ key: b.def.id, file: f, apply: (tex) => { b.mesh.material.map = tex; b.mesh.material.needsUpdate = true; } });
+    if (b.ring) targets.push({ key: `${b.def.id}-aneis`, file: RING_FILE, apply: (tex) => { b.ring.material.map = tex; b.ring.material.needsUpdate = true; } });
   }
-  return found;
+  return applyTextures(targets, { exists, load });
 }

@@ -392,8 +392,12 @@ loadSky(renderer.getPixelRatio())
   .catch((e) => console.warn('Céu real indisponível, usando estrelas procedurais:', e.message));
 
 loadRealTextures(bodies, renderer.capabilities.getMaxAnisotropy())
-  .then((found) => {
-    credits.push(found.length ? `texturas reais: ${found.length} (Solar System Scope, CC BY 4.0 — dados NASA)` : 'texturas procedurais (veja assets/textures/README.md para usar as reais)');
+  .then(({ loaded, failed }) => {
+    credits.push(loaded.length ? `texturas reais: ${loaded.length} (Solar System Scope, CC BY 4.0 — dados NASA)` : 'texturas procedurais (veja assets/textures/README.md para usar as reais)');
+    if (failed.length) {
+      console.warn('Texturas reais com falha (mantida a procedural):', failed);
+      credits.push(`⚠ falharam: ${failed.map((f) => f.key).join(', ')}`);
+    }
     $('credits').textContent = credits.join(' · ');
   })
   .catch((e) => console.warn('Texturas reais não carregadas:', e.message));
