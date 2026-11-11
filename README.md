@@ -4,6 +4,18 @@ Laboratório open source do sistema solar: navegue em **3D e no tempo**, em **es
 
 > 🚧 Protótipo. As órbitas são precisas para visualização (1800–2050); fora disso são extrapolação. Veja as [limitações](#limitações) e as [decisões](docs/decisoes/).
 
+**Versão atual: [v0.1.0 — Primeira Luz](https://github.com/adventurelabsbrasil/sistema-solar-lab/releases/tag/v0.1.0)** · [CHANGELOG](CHANGELOG.md)
+
+## Capturas
+
+| | |
+|---|---|
+| ![Visão geral do sistema solar em escala real, com as órbitas dos planetas e as constelações ao fundo](docs/img/01-visao-geral.jpg)<br>**Visão geral:** as 8 órbitas em 3D, com Órion e as outras constelações reais ao fundo | ![A Terra com a textura Blue Marble da NASA e o painel de controles](docs/img/02-terra.jpg)<br>**Terra** em escala real (textura Blue Marble) e o painel de controles, com o tempo em UTC |
+| ![Marte com o mosaico colorizado do Viking e a calota polar norte](docs/img/03-marte.jpg)<br>**Marte** (mosaico do Viking) com os controles escondidos | ![Saturno com seus anéis e a divisão de Cassini](docs/img/04-saturno.jpg)<br>**Saturno**, com anéis nos limites reais e a divisão de Cassini |
+| ![Terra e Lua em escala real diante da constelação de Órion](docs/img/05-orion.jpg)<br>**Terra e Lua** na proporção real de distância (384 mil km), diante de Órion | ![Júpiter em tons de vermelho no modo noturno](docs/img/06-noturno.jpg)<br>**Modo noturno:** Júpiter (mapa da Cassini) em vermelho, para não ofuscar no escuro |
+
+<sub>Capturas geradas com Chrome headless e renderização por software, em 10/11/2026 15:00 UTC.</sub>
+
 ## Ver
 
 Precisa de Node 20+ (`npm install` traz só o [three.js](https://threejs.org/)) e de `python3` para o servidor local.
