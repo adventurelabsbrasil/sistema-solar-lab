@@ -15,6 +15,19 @@
     * { box-sizing: border-box; }
     body { margin: 0; background: #000; color: #dfe6f5; font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
     canvas { display: block; }
+    #app { position: fixed; inset: 0; }
+    body.night #app { filter: url(#night-red); }
+    body.no-panel #panel { display: none; }
+    #showPanel { display: none; position: fixed; top: 10px; left: 10px; z-index: 5; width: 34px; height: 34px; background: #0b101ddd; color: #c4d0ea; border: 1px solid #25304d; border-radius: 8px; font-size: 16px; cursor: pointer; opacity: .75; }
+    #showPanel:hover { opacity: 1; background: #2a3a6a; }
+    body.no-panel #showPanel { display: block; }
+    #panel .head { display: flex; justify-content: space-between; align-items: center; }
+    #hidePanel { padding: 0 7px !important; }
+    .night-row { display: flex; align-items: center; gap: 6px; }
+    #panel button.info { width: 16px; height: 16px; padding: 0; border-radius: 50%; font: italic 700 10px/14px Georgia, serif; text-align: center; color: #9fb0d0; }
+    #nightNote { margin-top: 6px; padding: 8px; font-size: 11px; line-height: 1.45; color: #b6c3df; background: #101830; border: 1px solid #2b3858; border-radius: 6px; }
+    #nightNote[hidden] { display: none; }
+    kbd { font: 10px ui-monospace, monospace; padding: 0 4px; border: 1px solid #3a4a78; border-radius: 3px; }
     #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
     .label { position: absolute; transform: translate(8px, -50%); color: #9fb0d0; font-size: 11px; cursor: pointer; pointer-events: auto; white-space: nowrap; text-shadow: 0 0 4px #000; }
     .label.focus { color: #fff; font-weight: 600; }
@@ -37,9 +50,20 @@
   </style>
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <!-- Modo noturno: luminância → canal vermelho; verde e azul zerados. -->
+    <filter id="night-red" color-interpolation-filters="sRGB">
+      <feColorMatrix type="matrix" values="0.27 0.52 0.10 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"/>
+    </filter>
+  </svg>
+  <div id="app">
+  <button id="showPanel" title="Mostrar controles (H)" aria-label="Mostrar controles">☰</button>
   <div id="labels"></div>
   <div id="panel">
-    <h1>Sistema Solar Lab</h1>
+    <div class="head">
+      <h1>Sistema Solar Lab</h1>
+      <button id="hidePanel" title="Esconder controles (H)" aria-label="Esconder controles">✕</button>
+    </div>
     <div style="color:#7f90b3">3D + tempo · escala real</div>
 
     <h2>Tempo (4ª dimensão) — UTC</h2>
@@ -69,10 +93,23 @@
       <label class="chk"><input id="showStarNames" type="checkbox"> nomes das estrelas</label>
     </div>
 
+    <h2>Visão</h2>
+    <div class="night-row">
+      <label class="chk"><input id="night" type="checkbox"> modo noturno (vermelho)</label>
+      <button id="nightInfo" class="info" type="button" aria-label="O que é o modo noturno?" aria-expanded="false" aria-controls="nightNote">i</button>
+    </div>
+    <div id="nightNote" role="note" hidden>
+      Converte toda a imagem em tons de vermelho. A luz vermelha estimula pouco os bastonetes, as células do olho
+      que enxergam no escuro, então você mantém a adaptação ao escuro e se ofusca menos: a mesma ideia das lanternas
+      vermelhas usadas em astronomia e em cabines de aeronaves. Não é infravermelho de verdade (a tela não emite
+      infravermelho) e não substitui baixar o brilho da tela. Atalho: <kbd>N</kbd>.
+    </div>
+
     <h2>Corpo em foco</h2>
     <div id="info"></div>
     <div id="credits"></div>
-    <div id="hint">Arraste: girar · Roda/pinça: aproximar (da superfície até ~200 UA) · Clique num rótulo: voar até o corpo · Espaço: pausar</div>
+    <div id="hint">Arraste: girar · Roda/pinça: aproximar (da superfície até ~200 UA) · Clique num rótulo: voar até o corpo · Espaço: pausar · <kbd>H</kbd>: esconder controles · <kbd>N</kbd>: modo noturno</div>
+  </div>
   </div>
   <script type="module" src="src/main.js"></script>
 </body>

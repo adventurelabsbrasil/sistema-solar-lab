@@ -34,9 +34,12 @@ export function solveKepler(M, e, tol = 1e-12) {
   return E;
 }
 
+/** Movimento médio (°/dia): taxa JPL da longitude média (planetas) ou 360/período (Lua). */
+export const meanMotion = (body) => (body.Ldot != null ? body.Ldot / 36525 : 360 / body.period);
+
 /** Posição (UA, eclíptica) após `days` dias desde J2000, em relação ao corpo central. */
 export function position(body, days) {
-  const L = body.L0 + (360 / body.period) * days;
+  const L = body.L0 + meanMotion(body) * days;
   const varpi = body.varpi + (body.dVarpi || 0) * days;
   const M = (L - varpi) * DEG;
   return fromAnomaly(body, solveKepler(M, body.e), days);

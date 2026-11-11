@@ -36,7 +36,7 @@ const state = {
 // ── Cena ──────────────────────────────────────────────────────────────────────
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-document.body.prepend(renderer.domElement);
+$('app').prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
 // Céu: estrelas procedurais como fallback até (e se) o catálogo real carregar.
@@ -246,6 +246,32 @@ $('exag').addEventListener('change', (e) => {
 $('showOrbits').addEventListener('change', (e) => { for (const b of bodies) if (b.orbit) b.orbit.visible = e.target.checked; });
 $('showConst').addEventListener('change', (e) => { if (sky) sky.lines.visible = e.target.checked; });
 $('showLabels').addEventListener('change', (e) => { labelsEl.style.display = e.target.checked ? '' : 'none'; });
+// ── Controles ocultáveis e modo noturno (preferências lembradas no navegador) ──
+const store = {
+  get: (k) => { try { return localStorage.getItem(`ssl.${k}`); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(`ssl.${k}`, v); } catch { /* sem storage: só não persiste */ } },
+};
+const setPanelHidden = (hidden) => { document.body.classList.toggle('no-panel', hidden); store.set('panelHidden', hidden ? '1' : '0'); };
+const setNight = (on) => { document.body.classList.toggle('night', on); $('night').checked = on; store.set('night', on ? '1' : '0'); };
+$('hidePanel').addEventListener('click', () => setPanelHidden(true));
+$('showPanel').addEventListener('click', () => setPanelHidden(false));
+$('night').addEventListener('change', (e) => setNight(e.target.checked));
+$('nightInfo').addEventListener('click', () => {
+  const note = $('nightNote');
+  note.hidden = !note.hidden;
+  $('nightInfo').setAttribute('aria-expanded', String(!note.hidden));
+});
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+  if (e.code === 'KeyH') setPanelHidden(!document.body.classList.contains('no-panel'));
+  if (e.code === 'KeyN') setNight(!document.body.classList.contains('night'));
+});
+{
+  const q = new URLSearchParams(location.search);
+  setPanelHidden(q.has('controles') ? q.get('controles') === '0' : store.get('panelHidden') === '1');
+  setNight(q.has('noturno') ? q.get('noturno') === '1' : store.get('night') === '1');
+}
+
 $('panel').addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') e.target.blur(); });
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space' && !['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(e.target.tagName)) {
@@ -393,7 +419,7 @@ loadSky(renderer.getPixelRatio())
 
 loadRealTextures(bodies, renderer.capabilities.getMaxAnisotropy())
   .then(({ loaded, failed }) => {
-    credits.push(loaded.length ? `texturas reais: ${loaded.length} (Solar System Scope, CC BY 4.0 — dados NASA)` : 'texturas procedurais (veja assets/textures/README.md para usar as reais)');
+    credits.push(loaded.length ? `texturas reais: ${loaded.length} (NASA/USGS/JPL, domínio público; Saturno CC BY-SA 3.0 — assets/textures/CREDITS.md)` : 'texturas procedurais (veja assets/textures/README.md)');
     if (failed.length) {
       console.warn('Texturas reais com falha (mantida a procedural):', failed);
       credits.push(`⚠ falharam: ${failed.map((f) => f.key).join(', ')}`);

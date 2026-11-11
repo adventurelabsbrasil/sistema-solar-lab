@@ -1,30 +1,34 @@
-# Texturas reais (opcional)
+# Texturas reais
 
-O simulador usa texturas procedurais por padrão. Se os arquivos abaixo existirem nesta pasta, eles
-substituem automaticamente a textura de cada corpo (sem mudar código; basta recarregar a página).
+O simulador usa texturas procedurais por padrão e substitui, corpo a corpo, pelas imagens desta pasta
+quando elas existem (procura `<corpo>.jpg`; recarregue a página).
 
-**Fonte:** <https://www.solarsystemscope.com/textures/> — baseadas em dados da NASA, licença
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (uso comercial permitido, **com crédito**).
-O site não entrega os arquivos para download por script, então o download é manual: abra a página,
-baixe as imagens 2K e coloque-as aqui **com estes nomes**:
+## Já incluídas (baixadas por `scripts/fetch-textures.py`)
 
-| Corpo | Arquivo |
-|---|---|
-| Sol | `2k_sun.jpg` |
-| Mercúrio | `2k_mercury.jpg` |
-| Vênus | `2k_venus_atmosphere.jpg` |
-| Terra | `2k_earth_daymap.jpg` |
-| Lua | `2k_moon.jpg` |
-| Marte | `2k_mars.jpg` |
-| Júpiter | `2k_jupiter.jpg` |
-| Saturno | `2k_saturn.jpg` |
-| Anéis de Saturno | `2k_saturn_ring_alpha.png` |
-| Urano | `2k_uranus.jpg` |
-| Netuno | `2k_neptune.jpg` |
+| Corpo | Arquivo | Origem | Licença |
+|---|---|---|---|
+| Mercúrio | `mercurio.jpg` | MESSENGER/MDIS, mosaico monocromático (NASA/JHUAPL/USGS) | domínio público |
+| Terra | `terra.jpg` | Blue Marble Next Generation (NASA Earth Observatory) | domínio público |
+| Lua | `lua.jpg` | Clementine, albedo (USGS) — baixa resolução (1080×540) | domínio público |
+| Marte | `marte.jpg` | Viking MDIM 2.1 colorizado (NASA/JPL/USGS) | domínio público |
+| Júpiter | `jupiter.jpg` | Cassini, mapa cilíndrico (NASA/JPL/SSI) | domínio público |
+| Saturno | `saturno.jpg` | Mosaico de Askaniy Anpilogov e Björn Jónsson | CC BY-SA 3.0 |
 
-Faltou algum? Sem problema: aquele corpo continua procedural. O rodapé do painel mostra quantas
-texturas reais foram carregadas. Se publicar o repo com as imagens, mantenha o crédito em
-`assets/ATTRIBUTION.md` (já listado).
+Detalhes e autores por arquivo em [`CREDITS.md`](CREDITS.md). Para baixar de novo:
 
-Quer mais resolução? Baixe as versões 4K/8K e renomeie para os nomes acima (ou ajuste
-`TEXTURE_FILES` em `src/textures.js`).
+```bash
+python3 -I scripts/fetch-textures.py
+```
+
+## Sem textura real (procedurais)
+
+**Sol, Vênus, Urano e Netuno** continuam procedurais: não há mapa de superfície redistribuível
+equivalente (Vênus é coberto de nuvens, Urano e Netuno têm pouquíssimo detalhe, e o Sol não vem em
+projeção equirretangular). Se quiser, o pacote [Solar System Scope](https://www.solarsystemscope.com/textures/)
+(CC BY 4.0, baseado em dados da NASA) tem versões artísticas; o site não entrega arquivos para
+download por script, então o download é manual. Coloque aqui, com estes nomes, e o simulador usa:
+
+`sol.jpg` (ou `2k_sun.jpg`) · `venus.jpg` (`2k_venus_atmosphere.jpg`) · `urano.jpg` (`2k_uranus.jpg`) ·
+`netuno.jpg` (`2k_neptune.jpg`) · `saturno_aneis.png` (`2k_saturn_ring_alpha.png`)
+
+Mantenha o crédito em [`ATTRIBUTION.md`](../../ATTRIBUTION.md).

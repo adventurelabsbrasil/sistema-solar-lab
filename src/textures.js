@@ -118,19 +118,28 @@ export function makeRingTexture(inner, outer) {
   return tex;
 }
 
-// Texturas reais (opcionais): se o arquivo existir em assets/textures/, substitui a procedural.
-// Nomes seguem o pacote "Solar System Scope" (CC BY 4.0, baseado em dados da NASA) — ver assets/textures/README.md.
+// Texturas reais: se existir arquivo em assets/textures/, substitui a procedural (corpo a corpo).
+// 1º candidato: o que scripts/fetch-textures.py baixa (Commons, domínio público/CC);
+// 2º: nomes do pacote Solar System Scope (download manual, CC BY 4.0) — ver assets/textures/README.md.
 const TEX_BASE = 'assets/textures/';
 export const TEXTURE_FILES = {
-  sol: '2k_sun.jpg', mercurio: '2k_mercury.jpg', venus: '2k_venus_atmosphere.jpg', terra: '2k_earth_daymap.jpg',
-  lua: '2k_moon.jpg', marte: '2k_mars.jpg', jupiter: '2k_jupiter.jpg', saturno: '2k_saturn.jpg',
-  urano: '2k_uranus.jpg', netuno: '2k_neptune.jpg',
+  sol: ['sol.jpg', '2k_sun.jpg'],
+  mercurio: ['mercurio.jpg', '2k_mercury.jpg'],
+  venus: ['venus.jpg', '2k_venus_atmosphere.jpg'],
+  terra: ['terra.jpg', '2k_earth_daymap.jpg'],
+  lua: ['lua.jpg', '2k_moon.jpg'],
+  marte: ['marte.jpg', '2k_mars.jpg'],
+  jupiter: ['jupiter.jpg', '2k_jupiter.jpg'],
+  saturno: ['saturno.jpg', '2k_saturn.jpg'],
+  urano: ['urano.jpg', '2k_uranus.jpg'],
+  netuno: ['netuno.jpg', '2k_neptune.jpg'],
 };
-export const RING_FILE = '2k_saturn_ring_alpha.png';
+export const RING_FILES = ['saturno_aneis.png', '2k_saturn_ring_alpha.png'];
 
 export async function loadRealTextures(bodies, maxAnisotropy = 4) {
   const loader = new THREE.TextureLoader();
   const exists = async (f) => { try { return (await fetch(TEX_BASE + f, { method: 'HEAD' })).ok; } catch { return false; } };
+  const pick = async (candidates) => { for (const f of candidates) if (await exists(f)) return f; return null; };
   const load = async (f) => {
     const tex = await loader.loadAsync(TEX_BASE + f);
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -138,10 +147,13 @@ export async function loadRealTextures(bodies, maxAnisotropy = 4) {
     return tex;
   };
   const targets = [];
-  for (const b of bodies) {
-    const f = TEXTURE_FILES[b.def.id];
+  await Promise.all(bodies.map(async (b) => {
+    const f = await pick(TEXTURE_FILES[b.def.id] ?? []);
     if (f) targets.push({ key: b.def.id, file: f, apply: (tex) => { b.mesh.material.map = tex; b.mesh.material.needsUpdate = true; } });
-    if (b.ring) targets.push({ key: `${b.def.id}-aneis`, file: RING_FILE, apply: (tex) => { b.ring.material.map = tex; b.ring.material.needsUpdate = true; } });
-  }
+    if (b.ring) {
+      const rf = await pick(RING_FILES);
+      if (rf) targets.push({ key: `${b.def.id}-aneis`, file: rf, apply: (tex) => { b.ring.material.map = tex; b.ring.material.needsUpdate = true; } });
+    }
+  }));
   return applyTextures(targets, { exists, load });
 }

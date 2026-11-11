@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { solveKepler, position, orbitPath, daysSinceJ2000, dateFromDays, eclipticToScene, parseUtc, clampDays, MIN_DAYS, MAX_DAYS } from '../src/orbits.js';
+import { readFileSync } from 'node:fs';
+import { solveKepler, meanMotion, position, orbitPath, daysSinceJ2000, dateFromDays, eclipticToScene, parseUtc, clampDays, MIN_DAYS, MAX_DAYS } from '../src/orbits.js';
 import { PLANETS, MOON, AU_KM } from '../src/data/bodies.js';
 
 const earth = PLANETS.find((p) => p.id === 'terra');
@@ -28,8 +29,9 @@ test('Terra em J2000 está perto do periélio (~0.9833 UA)', () => {
 
 test('posição 3D se repete após um período (planetas)', () => {
   for (const p of PLANETS) {
+    const T = 360 / meanMotion(p); // período efetivo do modelo
     const a = position(p, 1234);
-    const b = position(p, 1234 + p.period);
+    const b = position(p, 1234 + T);
     assert.ok(Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) < 1e-6, p.name);
   }
 });
@@ -105,4 +107,20 @@ test('intervalo navegável = anos 0001–9999, sempre com ISO de 4 dígitos', ()
   assert.equal(clampDays(1e9), MAX_DAYS);
   assert.equal(clampDays(123), 123);
   assert.match(dateFromDays(clampDays(1e9)).toISOString(), /^\d{4}-/);
+});
+
+test('elementos J2000 dos planetas batem com a Tabela 1 da JPL (fixture)', () => {
+  const fx = JSON.parse(readFileSync(new URL('./fixtures/jpl-table1.json', import.meta.url), 'utf8'));
+  for (const p of PLANETS) {
+    const [a, e, I, L, varpi, Omega] = fx.planetas[p.id].j2000;
+    assert.deepEqual([p.a, p.e, p.I, p.L0, p.varpi, p.Omega], [a, e, I, L, varpi, Omega], p.id);
+    assert.equal(p.Ldot, fx.planetas[p.id].Ldot_deg_por_seculo, `${p.id} Ldot`);
+  }
+});
+
+test('período de exibição concorda com a taxa JPL em 0,05%', () => {
+  for (const p of PLANETS) {
+    const T = 360 / meanMotion(p);
+    assert.ok(Math.abs(T - p.period) / T < 5e-4, `${p.id}: ${p.period} vs ${T}`);
+  }
 });
