@@ -27,6 +27,20 @@ a 150 milhões de km do Sol, e só vira esfera quando você chega perto. O paine
 "se este corpo tivesse 1 cm de raio, o Sol estaria a X m". Há opção de ampliar os planetas (10×/30×,
 só tamanhos — distâncias seguem reais) para visão geral.
 
+## Céu real
+
+8 920 estrelas reais (catálogo HYG, até magnitude 6,5 — o limite do olho nu), posicionadas por
+ascensão reta/declinação J2000 e rotacionadas para a eclíptica, com cor pela temperatura (índice
+B–V) e tamanho/brilho pela magnitude. As 88 constelações (linhas + nomes) vêm do d3-celestial.
+Checkboxes "constelações" e "nomes das estrelas" no painel. Para apontar a câmera:
+`?look=84,2` (RA,Dec em graus; Órion) ou `?look=187,-60` (Cruzeiro do Sul). O céu acompanha a
+câmera, então o que você vê é o que se veria daquele ponto do sistema solar (paralaxe estelar ignorada).
+
+## Texturas
+
+Procedurais por padrão. Para usar texturas reais da NASA (via Solar System Scope, CC BY 4.0), siga
+`assets/textures/README.md` — é só soltar os arquivos na pasta.
+
 ## Corpos
 
 Sol, 8 planetas (com inclinação, nó ascendente, obliquidade do eixo, rotação e anéis de Saturno)
@@ -43,7 +57,11 @@ de km da câmera), `data` (UTC), `rate=0` (pausado).
 index.html              UI e import map (three via node_modules)
 src/orbits.js           mecânica pura 3D (testável em Node)
 src/data/bodies.js      elementos orbitais e dados físicos
-src/textures.js         texturas procedurais, estrelas, anéis
+src/textures.js         texturas procedurais/reais, anéis, estrelas de fallback
+src/sky.js              céu real (HYG + constelações)
+src/sky-math.js         RA/Dec → eclíptica, cor e brilho estelar (puro)
+scripts/build-sky.py    gera assets/sky/*.json a partir de dados abertos
+assets/                 dados do céu e atribuições
 src/main.js             cena, origem flutuante, voo, tempo, UI
 test/orbits.test.js     testes
 ```
@@ -53,10 +71,10 @@ test/orbits.test.js     testes
 - Elementos keplerianos médios J2000 (JPL/Standish), sem taxas seculares dos planetas: preciso para
   visualização perto de 1800–2050; deriva em milênios. Sem perturbações planeta-planeta.
 - Eixos de rotação: obliquidade correta, mas a direção do polo no espaço é aproximada.
-- Texturas procedurais (sem fotos); estrelas decorativas (não é catálogo real).
+- Texturas procedurais até você adicionar as reais; sem Via Láctea; estrelas sem paralaxe (infinitamente distantes) e só até mag 6,5.
 - Anéis sem sombra do planeta; Lua é a única lua.
 
 ## Backlog 🅿️
 
 Plutão e planetas-anões, luas de Júpiter/Saturno, cinturão e cometas (Halley), taxas seculares,
-texturas reais (NASA), catálogo estelar real, eclipses/alinhamentos como eventos navegáveis.
+Via Láctea, nuvens da Terra, estrelas mais fracas (mag > 6,5), eclipses/alinhamentos como eventos navegáveis.

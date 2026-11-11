@@ -28,6 +28,10 @@
     .row { display: flex; gap: 4px; flex-wrap: wrap; }
     #date { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
     #info { font-size: 12px; min-height: 120px; color: #c4d0ea; }
+    .clabel, .slabel { position: absolute; left: 0; top: 0; pointer-events: none; white-space: nowrap; text-shadow: 0 0 3px #000; }
+    .clabel { color: #4f6fa5; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+    .slabel { color: #9fb4dc; font-size: 10px; }
+    #credits { color: #566684; font-size: 10px; margin-top: 8px; }
     #hint { color: #6f7fa3; font-size: 11px; margin-top: 8px; }
     label.chk { display: inline-flex; gap: 4px; align-items: center; margin-right: 10px; }
   </style>
@@ -61,10 +65,13 @@
     <div style="margin-top:6px">
       <label class="chk"><input id="showOrbits" type="checkbox" checked> órbitas</label>
       <label class="chk"><input id="showLabels" type="checkbox" checked> rótulos</label>
+      <label class="chk"><input id="showConst" type="checkbox" checked> constelações</label>
+      <label class="chk"><input id="showStarNames" type="checkbox"> nomes das estrelas</label>
     </div>
 
     <h2>Corpo em foco</h2>
     <div id="info"></div>
+    <div id="credits"></div>
     <div id="hint">Arraste: girar · Roda/pinça: aproximar (da superfície até ~200 UA) · Clique num rótulo: voar até o corpo · Espaço: pausar</div>
   </div>
   <script type="module" src="src/main.js"></script>

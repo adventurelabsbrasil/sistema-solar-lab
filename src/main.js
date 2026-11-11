@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { SUN, PLANETS, MOON, RINGS, AU_KM } from './data/bodies.js';
 import { position, orbitPath, daysSinceJ2000, dateFromDays, eclipticToScene, clampDays, parseUtc, LIGHT_MIN_PER_AU } from './orbits.js';
-import { makeTexture, makeStars, makeRingTexture } from './textures.js';
+import { makeTexture, makeStars, makeRingTexture, loadRealTextures } from './textures.js';
+import { loadSky, SKY_RADIUS } from './sky.js';
+import { equatorialToScene } from './sky-math.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -37,7 +39,12 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.add(makeStars());
+// Céu: estrelas procedurais como fallback até (e se) o catálogo real carregar.
+const fallbackStars = makeStars();
+scene.add(fallbackStars);
+let sky = null;
+const skyLabels = []; // { el, dir, kind }
+
 // Origem flutuante: `world` é deslocado a cada quadro para que o ponto focado fique em (0,0,0).
 // Evita jitter de float32 a bilhões de km do Sol.
 const world = new THREE.Group();
@@ -237,6 +244,7 @@ $('exag').addEventListener('change', (e) => {
   if (!transition) controls.minDistance = radiusU(view.body) * MIN_ALT;
 });
 $('showOrbits').addEventListener('change', (e) => { for (const b of bodies) if (b.orbit) b.orbit.visible = e.target.checked; });
+$('showConst').addEventListener('change', (e) => { if (sky) sky.lines.visible = e.target.checked; });
 $('showLabels').addEventListener('change', (e) => { labelsEl.style.display = e.target.checked ? '' : 'none'; });
 $('panel').addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') e.target.blur(); });
 window.addEventListener('keydown', (e) => {
@@ -284,7 +292,21 @@ window.addEventListener('resize', resize);
 resize();
 
 const tmp = new THREE.Vector3();
+function updateSkyLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const l of skyLabels) {
+    if (!l.on()) { if (l.shown) { l.el.style.display = 'none'; l.shown = false; } continue; }
+    tmp.copy(l.dir).multiplyScalar(SKY_RADIUS).add(camera.position).project(camera);
+    const hide = tmp.z > 1 || tmp.z < -1 || Math.abs(tmp.x) > 1.05 || Math.abs(tmp.y) > 1.05;
+    if (hide) { if (l.shown) { l.el.style.display = 'none'; l.shown = false; } continue; }
+    l.el.style.display = '';
+    l.shown = true;
+    l.el.style.transform = `translate(${(tmp.x * 0.5 + 0.5) * w}px, ${(-tmp.y * 0.5 + 0.5) * h}px) translate(-50%, -50%)`;
+  }
+}
+
 function updateLabels() {
+  updateSkyLabels();
   if (labelsEl.style.display === 'none') return;
   const w = window.innerWidth, h = window.innerHeight;
   const moonVisible = view.body === byId.terra || view.body === byId.lua;
@@ -307,6 +329,7 @@ function frame(now) {
   updateBodies();
   applyView();
   controls.update();
+  (sky?.group ?? fallbackStars).position.copy(camera.position);
   renderer.render(scene, camera);
   updateLabels();
 
@@ -331,6 +354,13 @@ if (qs.get('data')) {
   const t = parseUtc(qs.get('data'));
   if (!Number.isNaN(t)) state.days = clampDays(daysSinceJ2000(new Date(t)));
 }
+if (qs.get('look')) { // ?look=RA,Dec (graus, J2000): aponta a câmera para essa região do céu
+  const [ra, dec] = qs.get('look').split(',').map(Number);
+  if (Number.isFinite(ra) && Number.isFinite(dec)) {
+    const d = equatorialToScene(ra, dec);
+    camera.position.set(-d.x, -d.y, -d.z).setLength(camera.position.length());
+  }
+}
 if (qs.get('rate')) { state.paused = qs.get('rate') === '0'; syncButtons(); }
 if (qs.get('foco') === 'geral') overview();
 else if (byId[qs.get('foco')]) {
@@ -339,5 +369,34 @@ else if (byId[qs.get('foco')]) {
 }
 requestAnimationFrame(frame);
 
+const credits = [];
+loadSky(renderer.getPixelRatio())
+  .then((s) => {
+    sky = s;
+    scene.remove(fallbackStars);
+    scene.add(s.group);
+    s.lines.visible = $('showConst').checked;
+    const addLabels = (list, cls, on) => list.forEach(({ dir, text }) => {
+      const el = document.createElement('div');
+      el.className = cls;
+      el.textContent = text;
+      el.style.display = 'none';
+      labelsEl.appendChild(el);
+      skyLabels.push({ el, dir, on, shown: false });
+    });
+    addLabels(s.constellationLabels, 'clabel', () => $('showConst').checked);
+    addLabels(s.starLabels, 'slabel', () => $('showStarNames').checked);
+    credits.push(`céu real: ${s.count.toLocaleString('pt-BR')} estrelas (HYG v4.1, CC BY-SA 4.0) + constelações (d3-celestial, BSD)`);
+    $('credits').textContent = credits.join(' · ');
+  })
+  .catch((e) => console.warn('Céu real indisponível, usando estrelas procedurais:', e.message));
+
+loadRealTextures(bodies, renderer.capabilities.getMaxAnisotropy())
+  .then((found) => {
+    credits.push(found.length ? `texturas reais: ${found.length} (Solar System Scope, CC BY 4.0 — dados NASA)` : 'texturas procedurais (veja assets/textures/README.md para usar as reais)');
+    $('credits').textContent = credits.join(' · ');
+  })
+  .catch((e) => console.warn('Texturas reais não carregadas:', e.message));
+
 // Gancho de depuração/teste (smoke headless).
-window.__lab = { state, focusOn, byId, camera, overview };
+window.__lab = { state, focusOn, byId, camera, overview, get sky() { return sky; } };

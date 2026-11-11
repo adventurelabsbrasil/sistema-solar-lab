@@ -116,3 +116,39 @@ export function makeRingTexture(inner, outer) {
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
+
+// Texturas reais (opcionais): se o arquivo existir em assets/textures/, substitui a procedural.
+// Nomes seguem o pacote "Solar System Scope" (CC BY 4.0, baseado em dados da NASA) — ver assets/textures/README.md.
+const TEX_BASE = 'assets/textures/';
+export const TEXTURE_FILES = {
+  sol: '2k_sun.jpg', mercurio: '2k_mercury.jpg', venus: '2k_venus_atmosphere.jpg', terra: '2k_earth_daymap.jpg',
+  lua: '2k_moon.jpg', marte: '2k_mars.jpg', jupiter: '2k_jupiter.jpg', saturno: '2k_saturn.jpg',
+  urano: '2k_uranus.jpg', netuno: '2k_neptune.jpg',
+};
+export const RING_FILE = '2k_saturn_ring_alpha.png';
+
+export async function loadRealTextures(bodies, maxAnisotropy = 4) {
+  const loader = new THREE.TextureLoader();
+  const exists = async (f) => { try { return (await fetch(TEX_BASE + f, { method: 'HEAD' })).ok; } catch { return false; } };
+  const load = async (f) => {
+    const tex = await loader.loadAsync(TEX_BASE + f);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = maxAnisotropy;
+    return tex;
+  };
+  const found = [];
+  for (const b of bodies) {
+    const f = TEXTURE_FILES[b.def.id];
+    if (f && (await exists(f))) {
+      b.mesh.material.map = await load(f);
+      b.mesh.material.needsUpdate = true;
+      found.push(b.def.id);
+    }
+    if (b.ring && (await exists(RING_FILE))) {
+      b.ring.material.map = await load(RING_FILE);
+      b.ring.material.needsUpdate = true;
+      found.push(`${b.def.id}-aneis`);
+    }
+  }
+  return found;
+}
